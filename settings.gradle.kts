@@ -31,3 +31,5 @@ project(":lrclib").projectDir = file("extensions/lrclib")
 // Submodules
 include(":innertube")
 project(":innertube").projectDir = file("modules/innertube")
+include(":saavn")
+project(":saavn").projectDir = file("extensions/saavn")
