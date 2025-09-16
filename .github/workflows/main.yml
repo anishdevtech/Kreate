@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,42 +19,45 @@ jobs:
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
-          submodules: recursive        # init and update all submodules [21]
-          fetch-depth: 0               # full history can help submodules/gradle versioning [17]
+          submodules: recursive
+          fetch-depth: 0
 
       - name: Set up Java 21 (Temurin) with Gradle cache
         uses: actions/setup-java@v5
         with:
-          distribution: temurin        # JDK distribution [9]
-          java-version: '21'           # Java 21 for AGP/Kotlin toolchains [9]
-          cache: gradle                # built-in Gradle cache [9]
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
 
-      - name: Set up Android SDK (cmdline-tools)
-        uses: android-actions/setup-android@v3   # installs cmdline-tools & sets ANDROID_SDK_ROOT [1]
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses (non-interactive)
+        shell: bash
+        run: |
+          set +e
+          yes | sdkmanager --licenses >/dev/null 2>&1
+          set -e
 
       - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
         shell: bash
-        # Install packages matching your compileSdk/build-tools [18]
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Show Gradle and Java versions
+      - name: Show tool versions
+        shell: bash
         run: |
           ./gradlew --version
           java -version
-        shell: bash
-        # Sanity check of toolchain [9]
+          sdkmanager --list | head -n 50 || true
 
       - name: Build Saavn Android library (release)
-        run: ./gradlew :saavn:assembleRelease --no-daemon
         shell: bash
-        # Confirms Saavn publishes Android variants [18]
+        run: ./gradlew :saavn:assembleRelease --no-daemon
 
       - name: Build app (GitHub release flavor)
-        run: ./gradlew :composeApp:assembleGithubRelease --no-daemon
         shell: bash
-        # Android CLI build of the flavor from the wrapper [18]
+        run: ./gradlew :composeApp:assembleGithubRelease --no-daemon
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
@@ -59,4 +66,4 @@ jobs:
           path: |
             composeApp/build/outputs/apk/**/release/*.apk
             composeApp/build/outputs/apk/github/release/*.apk
-        # Upload built APKs; adjust globs if your outputs differ [4]
+          if-no-files-found: warn
