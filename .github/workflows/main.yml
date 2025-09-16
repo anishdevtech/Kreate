@@ -1,28 +1,32 @@
-# .github/workflows/android.yml
 name: Android CI & Release
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
-    tags: [ "v*" ]    # create a release when pushing a tag like v1.0.0
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch:
 
 permissions:
-  contents: write  # required to create releases and upload assets
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout (submodules too)
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Set up Java 21 (Temurin) + Gradle cache
+      - name: Set up Java 21 (Temurin) with Gradle cache
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -32,62 +36,90 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept SDK licenses (non-interactive)
+      - name: Accept Android SDK licenses (non-interactive)
+        shell: bash
         run: |
           set +e
           yes | sdkmanager --licenses >/dev/null 2>&1
           set -e
 
-      - name: Install SDK packages
+      - name: Install Android SDK packages
+        shell: bash
         run: |
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Restore keystore from secret
+      - name: Restore keystore from secret (repo root)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        shell: bash
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
-          ls -l keystore.jks
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/keystore.jks"
+          ls -l "$GITHUB_WORKSPACE/keystore.jks"
 
-      - name: Build signed release (GitHub flavor)
+      - name: Show tool versions
+        shell: bash
+        run: |
+          ./gradlew --version
+          java -version
+
+      - name: Build signed APK (GitHub release flavor)
         env:
-          ANDROID_KEYSTORE_PATH: keystore.jks
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          ./gradlew :composeApp:assembleGithubRelease --no-daemon
+        shell: bash
+        run: ./gradlew :composeApp:assembleGithubRelease --no-daemon
+
+      - name: Build signed AAB (GitHub release flavor)
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+        run: ./gradlew :composeApp:bundleGithubRelease --no-daemon
 
       - name: Verify APK signature
+        shell: bash
         run: |
           APK=$(ls composeApp/build/outputs/apk/github/release/*.apk | head -n1)
           echo "Verifying $APK"
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose "$APK"
 
+      - name: Verify AAB signature (jarsigner)
+        shell: bash
+        run: |
+          AAB=$(ls composeApp/build/outputs/bundle/githubRelease/*.aab | head -n1)
+          echo "Verifying $AAB"
+          jarsigner -verify -verbose -certs "$AAB"
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks
-          path: composeApp/build/outputs/apk/**/release/*.apk
+          name: android-artifacts
+          path: |
+            composeApp/build/outputs/apk/**/release/*.apk
+            composeApp/build/outputs/bundle/**/**/*.aab
           if-no-files-found: warn
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
+    steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: android-apks
+          name: android-artifacts
           path: dist
 
-      - name: Create GitHub Release and upload APKs
+      - name: Create GitHub Release and upload APK/AAB
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.apk
+          files: |
+            dist/*.apk
+            dist/*.aab
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
