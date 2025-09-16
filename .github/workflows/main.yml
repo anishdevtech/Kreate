@@ -1,0 +1,62 @@
+name: Android CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive        # init and update all submodules [21]
+          fetch-depth: 0               # full history can help submodules/gradle versioning [17]
+
+      - name: Set up Java 21 (Temurin) with Gradle cache
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin        # JDK distribution [9]
+          java-version: '21'           # Java 21 for AGP/Kotlin toolchains [9]
+          cache: gradle                # built-in Gradle cache [9]
+
+      - name: Set up Android SDK (cmdline-tools)
+        uses: android-actions/setup-android@v3   # installs cmdline-tools & sets ANDROID_SDK_ROOT [1]
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+        shell: bash
+        # Install packages matching your compileSdk/build-tools [18]
+
+      - name: Show Gradle and Java versions
+        run: |
+          ./gradlew --version
+          java -version
+        shell: bash
+        # Sanity check of toolchain [9]
+
+      - name: Build Saavn Android library (release)
+        run: ./gradlew :saavn:assembleRelease --no-daemon
+        shell: bash
+        # Confirms Saavn publishes Android variants [18]
+
+      - name: Build app (GitHub release flavor)
+        run: ./gradlew :composeApp:assembleGithubRelease --no-daemon
+        shell: bash
+        # Android CLI build of the flavor from the wrapper [18]
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: |
+            composeApp/build/outputs/apk/**/release/*.apk
+            composeApp/build/outputs/apk/github/release/*.apk
+        # Upload built APKs; adjust globs if your outputs differ [4]
