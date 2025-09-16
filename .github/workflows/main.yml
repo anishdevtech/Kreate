@@ -48,12 +48,18 @@ jobs:
         run: |
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Restore keystore from secret (repo root)
+      - name: Restore keystore from secret (with guards)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         shell: bash
         run: |
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty (secrets not available on this event)"; exit 1
+          fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/keystore.jks"
+          if [ ! -s "$GITHUB_WORKSPACE/keystore.jks" ]; then
+            echo "ERROR: Decoded keystore is empty. Ensure the secret is single-line base64."; exit 1
+          fi
           ls -l "$GITHUB_WORKSPACE/keystore.jks"
 
       - name: Verify keystore (list aliases)
