@@ -339,18 +339,22 @@ licenseReport {
 
   filters = arrayOf<DependencyFilter>(ExcludeTransitiveDependenciesFilter())
 }
+// composeApp/build.gradle.kts
 android {
   signingConfigs {
     create("release") {
-      storeFile = file(System.getenv("ANDROID_KEYSTORE_PATH") ?: "keystore.jks")
+      val path = System.getenv("ANDROID_KEYSTORE_PATH") ?: "keystore.jks"
+      storeFile = rootProject.file(path)
       storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
       keyAlias = System.getenv("ANDROID_KEY_ALIAS")
       keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+      storeType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
     }
   }
   buildTypes {
     release {
       signingConfig = signingConfigs.getByName("release")
-         }
+    }
   }
 }
+
