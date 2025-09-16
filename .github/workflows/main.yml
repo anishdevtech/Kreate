@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: signApk  # make environment secrets available to this job [3]
 
     steps:
       - name: Checkout (with submodules)
@@ -25,24 +26,20 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-
       - name: Set up Java 21 (Temurin) with Gradle cache
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: gradle
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Accept Android SDK licenses (non-interactive)
         shell: bash
         run: |
           set +e
           yes | sdkmanager --licenses >/dev/null 2>&1
           set -e
-
       - name: Install Android SDK packages
         shell: bash
         run: |
@@ -54,13 +51,13 @@ jobs:
         shell: bash
         run: |
           if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
-            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty (secrets not available on this event)"; exit 1
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty (secrets/environment not available on this event)"; exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/keystore.jks"
           if [ ! -s "$GITHUB_WORKSPACE/keystore.jks" ]; then
             echo "ERROR: Decoded keystore is empty. Ensure the secret is single-line base64."; exit 1
           fi
-          ls -l "$GITHUB_WORKSPACE/keystore.jks"
+          ls -l "$GITHUB_WORKSPACE/keystore.jks"  # must be non-zero size [1]
 
       - name: Verify keystore (list aliases)
         env:
@@ -69,7 +66,7 @@ jobs:
         run: |
           keytool -list -v -storetype PKCS12 \
             -keystore "$GITHUB_WORKSPACE/keystore.jks" \
-            -storepass "$ANDROID_KEYSTORE_PASSWORD"
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" [23]
 
       - name: Show tool versions
         shell: bash
@@ -101,15 +98,13 @@ jobs:
         shell: bash
         run: |
           APK=$(ls composeApp/build/outputs/apk/github/release/*.apk | head -n1)
-          echo "Verifying $APK"
-          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose "$APK"
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose "$APK" [24]
 
       - name: Verify AAB signature (jarsigner)
         shell: bash
         run: |
           AAB=$(ls composeApp/build/outputs/bundle/githubRelease/*.aab | head -n1)
-          echo "Verifying $AAB"
-          jarsigner -verify -verbose -certs "$AAB"
+          jarsigner -verify -verbose -certs "$AAB" [25]
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -124,6 +119,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
+    environment: signApk  # optional if you also need env-protected secrets here [3]
 
     steps:
       - name: Download artifacts
@@ -131,7 +127,6 @@ jobs:
         with:
           name: android-artifacts
           path: dist
-
       - name: Create GitHub Release and upload APK/AAB
         uses: softprops/action-gh-release@v2
         with:
