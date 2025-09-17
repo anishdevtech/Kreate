@@ -34,6 +34,7 @@ repositories {
 }
 
 kotlin {
+  // Ensure Android target is registered for KMP
   androidTarget {
     compilerOptions {
       jvmTarget.set(JvmTarget.JVM_21)
@@ -301,9 +302,11 @@ compose.desktop {
   }
 }
 
+// Updated Compose resources DSL: no ResourcesType symbol
 compose.resources {
   publicResClass = true
-  generateResClass = org.jetbrains.compose.resources.ResourcesType.always
+  // Optional: force generation if needed by your workflow
+  // generateResClass.set(org.jetbrains.compose.resources.GenerateResClass.Always)
 }
 
 room {
