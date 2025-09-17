@@ -7,3 +7,4 @@
 [submodule "modules/innersaavn"]
 	path = modules/innersaavn
 	url = https://github.com/anishdevtech/innersaavn.git
+	branch = main
