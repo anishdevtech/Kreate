@@ -1,3 +1,5 @@
+// composeApp/build.gradle.kts
+
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import com.github.jk1.license.filter.DependencyFilter
 import com.github.jk1.license.filter.ExcludeTransitiveDependenciesFilter
@@ -39,6 +41,7 @@ kotlin {
     }
   }
 
+  // JVM target for Desktop Compose
   jvm()
 
   sourceSets {
@@ -48,103 +51,102 @@ kotlin {
       }
     }
 
-    jvmMain.dependencies {
-      implementation(compose.components.resources)
-      implementation(compose.desktop.currentOs)
+    // Shared UI/business logic
+    val commonMain by getting {
+      dependencies {
+        implementation(compose.runtime)
+        implementation(compose.foundation)
+        implementation(compose.material3)
+        implementation(compose.ui)
+        implementation(compose.components.resources)
+        implementation(compose.components.uiToolingPreview)
 
-      implementation(libs.material.icon.desktop)
-      implementation(libs.vlcj)
-      implementation(projects.innertube)
+        // Keep commonMain free of JVM-only modules; use platform source sets for provider modules
+        implementation(projects.oldtube)
+        implementation(projects.kugou)
+        implementation(projects.lrclib)
 
+        implementation(libs.kizzy.rpc)
+
+        // Room KMP
+        implementation(libs.room.runtime)
+        implementation(libs.room.sqlite.bundled)
+
+        implementation(libs.navigation.kmp)
+
+        // coil3 MP
+        implementation(libs.coil3.compose.core)
+        implementation(libs.coil3.network.ktor)
+
+        implementation(libs.translator)
+
+        implementation(libs.bundles.compose.kmp)
+        implementation(libs.hypnoticcanvas)
+        implementation(libs.hypnoticcanvas.shaders)
+
+        implementation(libs.kotlin.csv)
+        implementation(libs.bundles.ktor)
+
+        implementation(libs.math3)
+      }
     }
-    androidMain.dependencies {
-      implementation(libs.media3.session)
-      implementation(libs.kotlinx.coroutines.guava)
-      implementation(libs.newpipe.extractor)
-      implementation(libs.nanojson)
-      implementation(libs.androidx.webkit)
 
-      implementation(libs.androidx.glance.widgets)
-      implementation(libs.androidx.constraintlayout)
+    // Android-specific wiring (providers and Android libs)
+    val androidMain by getting {
+      dependencies {
+        implementation(libs.media3.session)
+        implementation(libs.kotlinx.coroutines.guava)
+        implementation(libs.newpipe.extractor)
+        implementation(libs.nanojson)
+        implementation(libs.androidx.webkit)
 
-      implementation(libs.androidx.appcompat)
-      implementation(libs.androidx.appcompat.resources)
-      implementation(libs.androidx.palette)
+        implementation(libs.androidx.glance.widgets)
+        implementation(libs.androidx.constraintlayout)
 
-      implementation(libs.monetcompat)
-      implementation(libs.androidmaterial)
+        implementation(libs.androidx.appcompat)
+        implementation(libs.androidx.appcompat.resources)
+        implementation(libs.androidx.palette)
 
-      implementation(libs.ktor.okhttp)
-      implementation(libs.okhttp3.logging.interceptor)
+        implementation(libs.monetcompat)
+        implementation(libs.androidmaterial)
 
-      // Deprecating
-      implementation(libs.androidx.crypto)
+        implementation(libs.ktor.okhttp)
+        implementation(libs.okhttp3.logging.interceptor)
 
-      // Player implementations
-      implementation(libs.media3.exoplayer)
-      implementation(libs.androidyoutubeplayer)
+        // Deprecating
+        implementation(libs.androidx.crypto)
 
-      implementation(libs.timber)
+        // Player implementations
+        implementation(libs.media3.exoplayer)
+        implementation(libs.androidyoutubeplayer)
 
-      implementation(libs.toasty)
-implementation(projects.saavn)
-      
+        implementation(libs.timber)
+        implementation(libs.toasty)
+
+        // Provider modules (JVM on Android)
+        implementation(projects.innertube)
+        implementation(projects.saavn)
+      }
     }
-    commonMain.dependencies {
-      implementation(compose.runtime)
-      implementation(compose.foundation)
-      implementation(compose.material3)
-      implementation(compose.ui)
-      implementation(compose.components.resources)
-      implementation(compose.components.uiToolingPreview)
 
-      implementation(projects.innertube)
-      implementation(projects.oldtube)
-      implementation(projects.kugou)
-      implementation(projects.lrclib)
+    // Desktop JVM wiring (providers and desktop compose)
+    val jvmMain by getting {
+      dependencies {
+        implementation(compose.components.resources)
+        implementation(compose.desktop.currentOs)
 
-      implementation(libs.kizzy.rpc)
+        implementation(libs.material.icon.desktop)
+        implementation(libs.vlcj)
 
-      // Room KMP
-      implementation(libs.room.runtime)
-      implementation(libs.room.sqlite.bundled)
-
-      implementation(libs.navigation.kmp)
-
-      // coil3 mp
-      implementation(libs.coil3.compose.core)
-      implementation(libs.coil3.network.ktor)
-
-      implementation(libs.translator)
-
-      implementation(libs.bundles.compose.kmp)
-
-      implementation(libs.hypnoticcanvas)
-      implementation(libs.hypnoticcanvas.shaders)
-
-      implementation(libs.kotlin.csv)
-
-      implementation(libs.bundles.ktor)
-
-      implementation(libs.math3)
+        // Provider modules for desktop runtime
+        implementation(projects.innertube)
+        implementation(projects.saavn)
+      }
     }
   }
 }
 
-
 android {
-  dependenciesInfo {
-    // Disables dependency metadata when building APKs.
-    includeInApk = false
-    // Disables dependency metadata when building Android App Bundles.
-    includeInBundle = false
-  }
-
-  buildFeatures {
-    buildConfig = true
-    compose = true
-  }
-
   compileSdk = 36
 
   defaultConfig {
@@ -154,10 +156,18 @@ android {
     versionCode = 117
     versionName = "1.7.2"
 
-    /*
-                UNIVERSAL VARIABLES
-         */
+    // Universal variables
     buildConfigField("String", "APP_NAME", "\"$APP_NAME\"")
+  }
+
+  buildFeatures {
+    buildConfig = true
+    compose = true
+  }
+
+  dependenciesInfo {
+    includeInApk = false
+    includeInBundle = false
   }
 
   splits {
@@ -174,12 +184,9 @@ android {
       applicationIdSuffix = ".debug"
       manifestPlaceholders["appName"] = "$APP_NAME-debug"
     }
-
     // To test compatibility after minification process
     create("debugR8") {
       initWith(maybeCreate("debug"))
-
-      // Package optimization
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -187,11 +194,8 @@ android {
         "debug-proguard-rules.pro"
       )
     }
-
     release {
       isDefault = true
-
-      // Package optimization
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -200,15 +204,9 @@ android {
       )
     }
     create("uncompressed") {
-      // App's properties
       versionNameSuffix = "-f"
     }
-
-    /**
-         * For convenience only.
-         * "Forkers" want to change app name across builds
-         * just need to change this variable
-         */
+    // Apply appName placeholder across all variants
     forEach {
       it.manifestPlaceholders.putIfAbsent("appName", APP_NAME)
     }
@@ -218,21 +216,14 @@ android {
   productFlavors {
     create("github") {
       dimension = "prod"
-
       isDefault = true
     }
-
     create("fdroid") {
       dimension = "prod"
-
-      // App's properties
       versionNameSuffix = "-fdroid"
     }
-
     create("izzy") {
       dimension = "prod"
-
-      // App's properties
       versionNameSuffix = "-izzy"
     }
   }
@@ -240,27 +231,22 @@ android {
   applicationVariants.all {
     outputs.map {
       it as BaseVariantOutputImpl
-    }
-    .forEach {
+    }.forEach {
       val suffix = if (flavorName == "izzy") "izzy" else buildType.name
       it.outputFileName = "$APP_NAME-${suffix}.apk"
     }
 
     if (buildType.name != "debug") {
       val capitalizedFlavorName = "${flavorName.capitalized()}${buildType.name.capitalized()}"
-
       tasks.register<Copy>("copyReleaseNoteTo${capitalizedFlavorName}Res") {
         from("$rootDir/fastlane/metadata/android/en-US/changelogs")
         val fileName = "${android.defaultConfig.versionCode!!}.txt"
         setIncludes(listOf(fileName))
-
         into("$rootDir/composeApp/src/android$capitalizedFlavorName/res/raw")
-
         rename {
           if (it == fileName) "release_notes.txt" else it
         }
       }
-
       preBuildProvider.get().dependsOn("copyReleaseNoteTo${capitalizedFlavorName}Res")
     }
   }
@@ -269,6 +255,24 @@ android {
     isCoreLibraryDesugaringEnabled = true
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
+  }
+
+  signingConfigs {
+    create("release") {
+      val path = System.getenv("ANDROID_KEYSTORE_PATH") ?: "keystore.jks"
+      storeFile = rootProject.file(path)
+      storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+      storeType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
+    }
+  }
+
+  buildTypes {
+    // Attach signing config to release
+    getByName("release") {
+      signingConfig = signingConfigs.getByName("release")
+    }
   }
 }
 
@@ -280,19 +284,16 @@ java {
 
 compose.desktop {
   application {
-
     mainClass = "MainKt"
 
-    //conveyor
+    // conveyor
     version = "0.0.1"
     group = "rimusic"
 
-    //jpackage
+    // jpackage
     nativeDistributions {
-      //conveyor
       vendor = "RiMusic.DesktopApp"
       description = "RiMusic Desktop Music Player"
-
       targetFormats(TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
       packageName = "RiMusic.DesktopApp"
       packageVersion = "0.0.1"
@@ -302,7 +303,7 @@ compose.desktop {
 
 compose.resources {
   publicResClass = true
-  generateResClass = always
+  generateResClass = org.jetbrains.compose.resources.ResourcesType.always
 }
 
 room {
@@ -311,50 +312,15 @@ room {
 
 dependencies {
   add("kspAndroid", libs.room.compiler)
-
   coreLibraryDesugaring(libs.desugaring.nio)
 }
-// Use `gradlew dependencies` to get report in composeApp/build/reports/dependency-license
+
+// Use `./gradlew dependencies` to get report in composeApp/build/reports/dependency-license
 licenseReport {
-  // Select projects to examine for dependencies.
-  // Defaults to current project and all its subprojects
   projects = arrayOf(project)
-
-  // Adjust the configurations to fetch dependencies. Default is 'runtimeClasspath'
-  // For Android projects use 'releaseRuntimeClasspath' or 'yourFlavorNameReleaseRuntimeClasspath'
-  // Use 'ALL' to dynamically resolve all configurations:
-  // configurations = ALL
   configurations = arrayOf("githubUncompressedRuntimeClasspath")
-
-  // Don't include artifacts of project's own group into the report
   excludeOwnGroup = true
-
-  // Don't exclude bom dependencies.
-  // If set to true, then all BOMs will be excluded from the report
   excludeBoms = true
-
-  // Set custom report renderer, implementing ReportRenderer.
-  // Yes, you can write your own to support any format necessary.
   renderers = arrayOf(JsonReportRenderer())
-
   filters = arrayOf<DependencyFilter>(ExcludeTransitiveDependenciesFilter())
 }
-// composeApp/build.gradle.kts
-android {
-  signingConfigs {
-    create("release") {
-      val path = System.getenv("ANDROID_KEYSTORE_PATH") ?: "keystore.jks"
-      storeFile = rootProject.file(path)
-      storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
-      keyAlias = System.getenv("ANDROID_KEY_ALIAS")
-      keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
-      storeType = System.getenv("ANDROID_KEYSTORE_TYPE") ?: "PKCS12"
-    }
-  }
-  buildTypes {
-    release {
-      signingConfig = signingConfigs.getByName("release")
-    }
-  }
-}
-
