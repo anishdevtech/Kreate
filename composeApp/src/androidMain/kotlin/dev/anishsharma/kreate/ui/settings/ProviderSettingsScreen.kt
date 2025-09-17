@@ -12,15 +12,15 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProviderSettingsScreen(flags: FeatureFlags) {
-    val scope = rememberCoroutineScope()
-    val yt by flags.enableYouTube.collectAsState(initial = true)
-    val sv by flags.enableSaavn.collectAsState(initial = true)
-    val fed by flags.enableFederated.collectAsState(initial = true)
+    val scope = rememberCoroutineScope() 
+    val yt by flags.enableYouTube.collectAsState(initial = true) 
+    val sv by flags.enableSaavn.collectAsState(initial = true) 
+    val fed by flags.enableFederated.collectAsState(initial = true) 
 
     Column(Modifier.padding(16.dp)) {
-        RowToggle("Enable YouTube", yt) { v -> scope.launch { flags.setEnableYouTube(v) } }
-        RowToggle("Enable JioSaavn", sv) { v -> scope.launch { flags.setEnableSaavn(v) } }
-        RowToggle("Merge results (Both)", fed) { v -> scope.launch { flags.setEnableFederated(v) } }
+        RowToggle("Enable YouTube", yt) { v -> scope.launch { flags.setEnableYouTube(v) } } 
+        RowToggle("Enable JioSaavn", sv) { v -> scope.launch { flags.setEnableSaavn(v) } } 
+        RowToggle("Merge results (Both)", fed) { v -> scope.launch { flags.setEnableFederated(v) } } 
     }
 }
 

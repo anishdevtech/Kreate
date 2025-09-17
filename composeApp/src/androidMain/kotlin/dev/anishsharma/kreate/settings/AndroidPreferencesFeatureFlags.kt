@@ -22,17 +22,17 @@ class AndroidPreferencesFeatureFlags(private val context: Context) : FeatureFlag
 
     override val enableYouTube: Flow<Boolean> =
         ds.data.catch { if (it is IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw it }
-            .map { it[Keys.ENABLE_YT] ?: true } [web:1846][web:1849]
+            .map { it[Keys.ENABLE_YT] ?: true } 
 
     override val enableSaavn: Flow<Boolean> =
         ds.data.catch { if (it is IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw it }
-            .map { it[Keys.ENABLE_SAAVN] ?: true } [web:1846][web:1849]
+            .map { it[Keys.ENABLE_SAAVN] ?: true } 
 
     override val enableFederated: Flow<Boolean> =
         ds.data.catch { if (it is IOException) emit(androidx.datastore.preferences.core.emptyPreferences()) else throw it }
-            .map { it[Keys.ENABLE_FED] ?: true } [web:1846][web:1849]
+            .map { it[Keys.ENABLE_FED] ?: true } 
 
-    override suspend fun setEnableYouTube(value: Boolean) { ds.edit { it[Keys.ENABLE_YT] = value } } [web:1849]
-    override suspend fun setEnableSaavn(value: Boolean) { ds.edit { it[Keys.ENABLE_SAAVN] = value } } [web:1849]
-    override suspend fun setEnableFederated(value: Boolean) { ds.edit { it[Keys.ENABLE_FED] = value } } [web:1849]
+    override suspend fun setEnableYouTube(value: Boolean) { ds.edit { it[Keys.ENABLE_YT] = value } } 
+    override suspend fun setEnableSaavn(value: Boolean) { ds.edit { it[Keys.ENABLE_SAAVN] = value } } 
+    override suspend fun setEnableFederated(value: Boolean) { ds.edit { it[Keys.ENABLE_FED] = value } } 
 }
