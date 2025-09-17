@@ -8,17 +8,38 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.anishsharma.kreate.core.music.ProviderSelection
-import dev.anishsharma.kreate.core.music.SearchController
 import dev.anishsharma.kreate.core.music.Track
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
-fun SearchScreen(controller: SearchController) {
-    val selection by controller.selection.collectAsState()
-    val results by controller.results.collectAsState()
+fun SearchScreen(
+    selection: StateFlow<ProviderSelection>,
+    results: StateFlow<List<Track>>,
+    onSelect: (ProviderSelection) -> Unit,
+    onSearch: (String) -> Unit
+) {
+    val selectionState by selection.collectAsState(initial = ProviderSelection.BOTH)
+    val resultsState by results.collectAsState(initial = emptyList())
     var query by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        SegmentedProviderToggle(selection) { controller.setSelection(it) }
+        SingleChoiceSegmentedButtonRow {
+            SegmentedButton(
+                selected = selectionState == ProviderSelection.BOTH,
+                onClick = { onSelect(ProviderSelection.BOTH) },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+            ) { Text("Both") }
+            SegmentedButton(
+                selected = selectionState == ProviderSelection.YOUTUBE_ONLY,
+                onClick = { onSelect(ProviderSelection.YOUTUBE_ONLY) },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+            ) { Text("YouTube") }
+            SegmentedButton(
+                selected = selectionState == ProviderSelection.SAAVN_ONLY,
+                onClick = { onSelect(ProviderSelection.SAAVN_ONLY) },
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+            ) { Text("JioSaavn") }
+        }
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = query,
@@ -28,35 +49,11 @@ fun SearchScreen(controller: SearchController) {
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
-        Button(onClick = { controller.setQuery(query); controller.search(query) }) { Text("Search") }
+        Button(onClick = { onSearch(query) }) { Text("Search") }
         Spacer(Modifier.height(16.dp))
         LazyColumn(Modifier.fillMaxSize()) {
-            items(results) { t -> TrackRow(t) }
+            items(resultsState) { t -> TrackRow(t) }
         }
-    }
-}
-
-@Composable
-private fun SegmentedProviderToggle(
-    selection: ProviderSelection,
-    onSelect: (ProviderSelection) -> Unit
-) {
-    SingleChoiceSegmentedButtonRow {
-        SegmentedButton(
-            checked = selection == ProviderSelection.BOTH,
-            onCheckedChange = { onSelect(ProviderSelection.BOTH) },
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-        ) { Text("Both") }
-        SegmentedButton(
-            checked = selection == ProviderSelection.YOUTUBE_ONLY,
-            onCheckedChange = { onSelect(ProviderSelection.YOUTUBE_ONLY) },
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-        ) { Text("YouTube") }
-        SegmentedButton(
-            checked = selection == ProviderSelection.SAAVN_ONLY,
-            onCheckedChange = { onSelect(ProviderSelection.SAAVN_ONLY) },
-            shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-        ) { Text("JioSaavn") }
     }
 }
 
