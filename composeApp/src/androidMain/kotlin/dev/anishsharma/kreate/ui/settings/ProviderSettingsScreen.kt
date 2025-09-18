@@ -8,147 +8,65 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.anishsharma.kreate.settings.FeatureFlags
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProviderSettingsDestination(
-    flags: FeatureFlags,
-    onBackPressed: () -> Unit
-) {
-    val scrollState = rememberScrollState()
-    
+fun ProviderSettingsScreen(flags: FeatureFlags, onBack: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val yt by flags.enableYouTube.collectAsState(initial = true)
+    val sv by flags.enableSaavn.collectAsState(initial = true)
+    val fed by flags.enableFederated.collectAsState(initial = true)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Provider Settings") },
                 navigationIcon = {
-                    IconButton(onClick = onBackPressed) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
+                    TextButton(onClick = onBack) { Text("Back") }
                 }
             )
         }
-    ) { paddingValues ->
+    ) { pad ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(pad)
                 .padding(16.dp)
-                .verticalScroll(scrollState),
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Music Providers",
-                fontSize = 18.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            
-            ProviderToggleCard(flags = flags)
-            
-            Text(
-                text = "Search Settings",
-                fontSize = 18.sp,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-            )
-            
-            SearchSettingsCard(flags = flags)
-        }
-    }
-}
-
-@Composable
-private fun ProviderToggleCard(flags: FeatureFlags) {
-    val scope = rememberCoroutineScope()
-    val ytEnabled by flags.enableYouTube.collectAsState(initial = true)
-    val saavnEnabled by flags.enableSaavn.collectAsState(initial = true)
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ProviderToggleRow(
-                title = "YouTube Music",
-                description = "Search and play music from YouTube",
-                enabled = ytEnabled,
-                onToggle = { enabled ->
-                    scope.launch { flags.setEnableYouTube(enabled) }
+            Text("Music Providers", style = MaterialTheme.typography.titleMedium)
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("YouTube Music", style = MaterialTheme.typography.titleMedium)
+                            Text("Search and play from YouTube", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = yt, onCheckedChange = { v -> scope.launch { flags.setEnableYouTube(v) } })
+                    }
+                    Divider()
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("JioSaavn", style = MaterialTheme.typography.titleMedium)
+                            Text("Search and play from JioSaavn", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = sv, onCheckedChange = { v -> scope.launch { flags.setEnableSaavn(v) } })
+                    }
                 }
-            )
-            
-            Divider()
-            
-            ProviderToggleRow(
-                title = "JioSaavn",
-                description = "Search and play music from JioSaavn",
-                enabled = saavnEnabled,
-                onToggle = { enabled ->
-                    scope.launch { flags.setEnableSaavn(enabled) }
+            }
+            Text("Search Settings", style = MaterialTheme.typography.titleMedium)
+            Card(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Merge Results (Both)", style = MaterialTheme.typography.titleMedium)
+                        Text("Combine provider results in Both mode", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = fed, onCheckedChange = { v -> scope.launch { flags.setEnableFederated(v) } })
                 }
-            )
+            }
         }
-    }
-}
-
-@Composable
-private fun SearchSettingsCard(flags: FeatureFlags) {
-    val scope = rememberCoroutineScope()
-    val federatedEnabled by flags.enableFederated.collectAsState(initial = true)
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            ProviderToggleRow(
-                title = "Merge Search Results",
-                description = "Combine results from multiple providers when using 'Both' mode",
-                enabled = federatedEnabled,
-                onToggle = { enabled ->
-                    scope.launch { flags.setEnableFederated(enabled) }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProviderToggleRow(
-    title: String,
-    description: String,
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        
-        Switch(
-            checked = enabled,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors()
-        )
     }
 }
