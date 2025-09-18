@@ -24,33 +24,28 @@ class SearchModule(private val flags: FeatureFlags) {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    // Cache provider flags as StateFlow so .value can be read in DI lambdas
+    // Cache flags as StateFlow so we can use .value in DI lambdas
     private val ytEnabled = flags.enableYouTube.stateIn(appScope, SharingStarted.Eagerly, true)
     private val svEnabled = flags.enableSaavn.stateIn(appScope, SharingStarted.Eagerly, true)
     private val fedEnabled = flags.enableFederated.stateIn(appScope, SharingStarted.Eagerly, true)
 
-    // Shared Ktor client for Saavn
     private val httpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-            })
+            json(Json { ignoreUnknownKeys = true; isLenient = true })
         }
     }
 
-    // Build platform YouTube provider and adapt to the shared MusicProvider interface
     private fun youtubeProvider(): MusicProvider {
-        // Use positional args for current gateway signature and supply localization codes
+        // Use positional args; no named args on Java interop
         val gateway = InnertubeGatewayImpl(
             Innertube,
-            Localization(languageCode = "en", regionCode = "IN")
+            Localization("en", "IN")
         )
         val platform = PlatformYouTubeProvider(gateway)
         return object : MusicProvider {
             override suspend fun search(query: String, limit: Int) =
                 platform.search(query, limit)
-            // URL and ID resolution not exposed by platform provider; return null to let orchestrator fall back
+            // Not exposed by platform provider; return null to signal “not supported”
             override suspend fun getByUrl(url: String) = null
             override suspend fun getById(id: String) = null
         }
