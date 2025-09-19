@@ -1,13 +1,13 @@
-name: Android Test Build
+name: Android Build and Release
 
 on:
   push:
     branches:
       - main
-  pull_request:
+  workflow_dispatch:
 
 jobs:
-  build-debug-apk:
+  build-and-upload:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,25 +32,13 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
-    - name: Run Gradle assemble (debug github flavor)
-      run: ./gradlew :composeApp:assembleGithubDebug --no-daemon --stacktrace
+    - name: Build debug APK (fastest)
+      run: ./gradlew :composeApp:assembleGithubDebug --no-daemon --parallel --max-workers=4
 
-    - name: Set up ADB for device connection
-      uses: reactivecircus/android-emulator-runner@v2
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v1
       with:
-        api-level: 33
-        target: google_apis
-        arch: x86_64
-        emulator-options: -no-window -no-audio
-        script: |
-          adb devices
-
-    # Optional: install APK on connected device/emulator (comment if not needed)
-    - name: Install debug APK on device
-      run: |
-        adb install -r $(ls -t composeApp/build/outputs/apk/github/debug/*.apk | head -n1)
-
-    # Optional: launch main activity (replace package/activity as needed)
-    - name: Launch main Activity
-      run: |
-        adb shell am start -n me.knighthat.kreate/.MainActivity
+        files: |
+          composeApp/build/outputs/apk/github/debug/*.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
