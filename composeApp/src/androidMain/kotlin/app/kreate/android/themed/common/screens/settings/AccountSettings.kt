@@ -51,7 +51,7 @@ import it.fast4x.rimusic.thumbnailShape
 import it.fast4x.rimusic.ui.components.CustomModalBottomSheet
 import it.fast4x.rimusic.ui.styling.Dimensions
 
-// *** Placeholder Composable for Spotify Login - You will need to implement the actual logic here. ***
+//Placeholder Composable for Spotify Login 
 @Composable
 fun SpotifyLogin( onDone: () -> Unit ) {
     // Placeholder content for the Spotify Login UI (likely a WebView)
@@ -63,15 +63,6 @@ fun SpotifyLogin( onDone: () -> Unit ) {
         )
     }
 }
-
-// *** You will need to add new string resources (R.string.spotify_connect, etc.) and drawable resources (R.drawable.spotify_logo)
-// *** to your `res/values/strings.xml` and `res/drawable` folders for this to compile correctly.
-
-// *** For the Preferences, you need to define these in your Preferences class: ***
-// Example in app.kreate.android.Preferences:
-// val SPOTIFY_LOGIN = BooleanPreference("spotify_login", false)
-// val SPOTIFY_ACCESS_TOKEN = StringPreference("spotify_access_token", "")
-// val SPOTIFY_CANVAS_ENABLED = BooleanPreference("spotify_canvas_enabled", false)
 
 @ExperimentalMaterial3Api
 @Composable
@@ -266,27 +257,22 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                 modifier = Modifier.padding( start = 25.dp )
             ) {
                 var loginSpotify by remember { mutableStateOf(false) }
-                // Dummy state: Check if access token is present
                 val isLoggedIn = Preferences.SPOTIFY_ACCESS_TOKEN.value.isNotBlank()
+
+                // Resolve string resources OUTSIDE the remember block
+                val disconnectTitle = stringResource(R.string.spotify_canvas_disconnect) 
+                val connectedSubtitle = stringResource(R.string.spotify_canvas_connected) 
+                val connectTitle = stringResource(R.string.spotify_canvas_connect) 
 
                 Column {
                     val (title, subtitle) = remember( isLoggedIn ) {
                         if ( isLoggedIn )
-                             stringResource(R.string.spotify_canvas_disconnect) to stringResource(R.string.spotify_canvas_connected)
+                             disconnectTitle to  connectedSubtitle
                         else
-                             stringResource(R.string.spotify_canvas_connect) to ""
+                             connectTitle to ""
                     }
-                    if( search appearsIn title )
-                        SettingComponents.Text(
-                            title = title,
-                            subtitle = subtitle,
-                            onClick = {
-                                if (isLoggedIn) {
-                                    Preferences.SPOTIFY_ACCESS_TOKEN.reset()
-                                    loginSpotify = false
-                                } else
-                                    loginSpotify = true
-                            },
+// ...
+,
                         ) {
                             
                             Image(
@@ -296,7 +282,6 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                             )
                         }
 
-                    // Spotify Canvas Toggle (Only a button to toggle, no complex logic)
                     val spotifyCanvasTitle = stringResource(R.string.spotify_canvas_title)
                     if( search appearsIn spotifyCanvasTitle )
                         SettingComponents.BooleanEntry(
