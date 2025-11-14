@@ -1,0 +1,118 @@
+name: 🚀 Build Kreate APK (Optimized Debug)
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+jobs:
+  debug-build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+      JAVA_VERSION: 21
+      BUILD_TOOLS_VERSION: "34.0.0"
+      PLATFORM_VERSION: "android-34"
+
+    steps:
+      # ─────────────────────────────────────────────
+      # 1️⃣ Checkout the source code
+      # Ref: https://docs.github.com/en/actions/using-workflows/using-github-cli-in-workflows
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # ─────────────────────────────────────────────
+      # 2️⃣ Set up Java (Temurin JDK 21) + Gradle dependency cache
+      # Ref: https://github.com/actions/setup-java
+      # Ref: https://blog.gradle.org/gh-actions
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      # ─────────────────────────────────────────────
+      # 3️⃣ Setup Gradle Action for dependency graph + build caching
+      # Handles Gradle User Home, dependency caching, and build scans automatically.
+      # Ref: https://github.com/gradle/actions/blob/main/docs/setup-gradle.md
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          dependency-graph: generate-and-submit
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      # ─────────────────────────────────────────────
+      # 4️⃣ Install Android SDK Command-line Tools
+      # sdkmanager is not preinstalled, so we fetch official tools directly.
+      # Ref: https://developer.android.com/studio#command-tools
+      - name: Install Android SDK CLI Tools
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT/cmdline-tools"
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-11076708_latest.zip
+          rm commandlinetools-linux-11076708_latest.zip
+          mv cmdline-tools latest
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+      # ─────────────────────────────────────────────
+      # 5️⃣ Install required Android SDK packages (once cached, this step is instant)
+      # Ref: https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;${PLATFORM_VERSION}" "build-tools;${BUILD_TOOLS_VERSION}"
+      # ─────────────────────────────────────────────
+      # 6️⃣ Cache Android SDK for reuse between runs
+      # Large downloads avoided on future builds.
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_SDK_ROOT }}
+          key: ${{ runner.os }}-android-sdk-${{ env.PLATFORM_VERSION }}-${{ env.BUILD_TOOLS_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-
+      # ─────────────────────────────────────────────
+      # 7️⃣ Verify SDK installation (optional but useful for debugging)
+      - name: Verify Android SDK
+        run: |
+          sdkmanager --list | head -n 30
+          adb version
+      # ─────────────────────────────────────────────
+      # 8️⃣ Build the Debug APK
+      # Includes Gradle build cache, parallel workers, and skips slow tasks.
+      # Ref: https://docs.gradle.org/current/userguide/build_cache.html
+      - name: Build Debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :composeApp:assembleGithubDebug \
+            --no-daemon \
+            --parallel \
+            --build-cache \
+            --configure-on-demand \
+            --max-workers=4 \
+            -x lint -x test
+      # ─────────────────────────────────────────────
+      # 9️⃣ Verify and list generated APKs
+      - name: List APK outputs
+        run: |
+          echo "✅ Generated APKs:"
+          ls -R composeApp/build/outputs/apk/github/debug || echo "❌ No APKs found!"
+      # ─────────────────────────────────────────────
+      # 🔟 Upload built artifact
+      # Ref: https://github.com/actions/upload-artifact
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kreate-Github-Debug
+          path: composeApp/build/outputs/apk/github/debug/*.apk
+          retention-days: 7

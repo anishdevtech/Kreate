@@ -51,6 +51,28 @@ import it.fast4x.rimusic.thumbnailShape
 import it.fast4x.rimusic.ui.components.CustomModalBottomSheet
 import it.fast4x.rimusic.ui.styling.Dimensions
 
+// *** Placeholder Composable for Spotify Login - You will need to implement the actual logic here. ***
+@Composable
+fun SpotifyLogin( onDone: () -> Unit ) {
+    // Placeholder content for the Spotify Login UI (likely a WebView)
+    Column(modifier = Modifier.padding(16.dp)) {
+        SettingComponents.Text(
+            title = "Spotify Login Placeholder",
+            subtitle = "Implement your Spotify OAuth logic here.",
+            onClick = { /* Actual login logic */ onDone() }
+        )
+    }
+}
+
+// *** You will need to add new string resources (R.string.spotify_connect, etc.) and drawable resources (R.drawable.spotify_logo)
+// *** to your `res/values/strings.xml` and `res/drawable` folders for this to compile correctly.
+
+// *** For the Preferences, you need to define these in your Preferences class: ***
+// Example in app.kreate.android.Preferences:
+// val SPOTIFY_LOGIN = BooleanPreference("spotify_login", false)
+// val SPOTIFY_ACCESS_TOKEN = StringPreference("spotify_access_token", "")
+// val SPOTIFY_CANVAS_ENABLED = BooleanPreference("spotify_canvas_enabled", false)
+
 @ExperimentalMaterial3Api
 @Composable
 fun AccountSettings( paddingValues: PaddingValues ) {
@@ -223,6 +245,88 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                     }
                 }
             }
+
+            // *** START OF SPOTIFY LOGIN SECTION ***
+            header( { "spotify" } )
+            entry( search, "spotify_login" ) {
+                SettingComponents.BooleanEntry(
+                    // Preference to enable Spotify services
+                    Preferences.SPOTIFY_LOGIN,
+                    R.string.setting_entry_spotify_login // Hardcoded string for simplicity, replace with stringResource(R.string.setting_entry_spotify_login)
+                ) {
+                    if ( it ) return@BooleanEntry
+
+                    // Logic to clear Spotify credentials on disable
+                    Preferences.SPOTIFY_ACCESS_TOKEN.reset()
+                }
+            }
+            animatedEntry(
+                key = "spotifyLoginChildren",
+                visible = Preferences.SPOTIFY_LOGIN.value,
+                modifier = Modifier.padding( start = 25.dp )
+            ) {
+                var loginSpotify by remember { mutableStateOf(false) }
+                // Dummy state: Check if access token is present
+                val isLoggedIn = Preferences.SPOTIFY_ACCESS_TOKEN.value.isNotBlank()
+
+                Column {
+                    val (title, subtitle) = remember( isLoggedIn ) {
+                        if ( isLoggedIn )
+                             R.string.spotify_canvas_disconnect to  R.string.spotify_canvas_connected
+                        else
+                             R.string.spotify_canvas_connect to ""
+                    }
+                    if( search appearsIn title )
+                        SettingComponents.Text(
+                            title = title,
+                            subtitle = subtitle,
+                            onClick = {
+                                if (isLoggedIn) {
+                                    Preferences.SPOTIFY_ACCESS_TOKEN.reset()
+                                    loginSpotify = false
+                                } else
+                                    loginSpotify = true
+                            },
+                        ) {
+                            
+                            Image(
+                                painter = painterResource( R.drawable.spotify_logo ),
+                                contentDescription = title,
+                                modifier = Modifier.size( 24.dp )
+                            )
+                        }
+
+                    // Spotify Canvas Toggle (Only a button to toggle, no complex logic)
+                    val spotifyCanvasTitle = stringResource(R.string.spotify_canvas_title)
+                    if( search appearsIn spotifyCanvasTitle )
+                        SettingComponents.BooleanEntry(
+                            preference = Preferences.SPOTIFY_CANVAS_ENABLED,
+                            title =  R.string.setting_entry_spotify_canvas
+                        )
+                }
+
+                CustomModalBottomSheet(
+                    showSheet = loginSpotify,
+                    onDismissRequest = { loginSpotify = false },
+                    containerColor = colorPalette().background0,
+                    contentColor = colorPalette().background0,
+                    modifier = Modifier.fillMaxWidth(),
+                    sheetState = rememberModalBottomSheetState( true ),
+                    dragHandle = {
+                        Surface(
+                            color = colorPalette().background0,
+                            shape = thumbnailShape()
+                        ) {}
+                    },
+                    shape = Preferences.THUMBNAIL_BORDER_RADIUS.value.shape
+                ) {
+                    // Call the placeholder or your actual SpotifyLogin composable
+                    SpotifyLogin {
+                        loginSpotify = false
+                    }
+                }
+            }
+            // *** END OF SPOTIFY LOGIN SECTION ***
 
             // This is a brand name that doesn't need translation
             header( { "discord" } )
