@@ -243,7 +243,7 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                 SettingComponents.BooleanEntry(
                     // Preference to enable Spotify services
                     Preferences.SPOTIFY_LOGIN,
-                    stringResource(R.string.setting_entry_spotify_login) // Hardcoded string for simplicity, replace with stringResource(R.string.setting_entry_spotify_login)
+                    stringResource(R.string.setting_entry_spotify_login)
                 ) {
                     if ( it ) return@BooleanEntry
 
@@ -271,23 +271,34 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                         else
                              connectTitle to ""
                     }
-// ...
-,
+                    
+                    if( search appearsIn title ) {
+                        SettingComponents.Text(
+                            title = title,
+                            subtitle = subtitle,
+                            onClick = {
+                                if (isLoggedIn) {
+                                    Preferences.SPOTIFY_ACCESS_TOKEN.reset()
+                                } else {
+                                    loginSpotify = true
+                                }
+                            }
                         ) {
-                            
                             Image(
                                 painter = painterResource( R.drawable.spotify_logo ),
                                 contentDescription = title,
                                 modifier = Modifier.size( 24.dp )
                             )
                         }
+                    }
 
                     val spotifyCanvasTitle = stringResource(R.string.spotify_canvas_title)
-                    if( search appearsIn spotifyCanvasTitle )
+                    if( search appearsIn spotifyCanvasTitle ) {
                         SettingComponents.BooleanEntry(
                             preference = Preferences.SPOTIFY_CANVAS_ENABLED,
                             title =  stringResource(R.string.setting_entry_spotify_canvas)
                         )
+                    }
                 }
 
                 CustomModalBottomSheet(
