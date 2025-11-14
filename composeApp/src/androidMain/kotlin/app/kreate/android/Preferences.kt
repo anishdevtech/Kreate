@@ -680,7 +680,19 @@ sealed class Preferences<T>(
         val DISCORD_ACCESS_TOKEN by lazy {
             String( encryptedPreferences, "DiscordPersonalAccessToken", "", "" )
         }
+       val SPOTIFY_LOGIN by lazy {
+    Boolean( preferences, "SpotifyLogin", "isSpotifyEnabled", false )
+}
+
+       val SPOTIFY_ACCESS_TOKEN by lazy {
+    String( encryptedPreferences, "SpotifyAccessToken", "", "" )
+}
+
+       val SPOTIFY_CANVAS_ENABLED by lazy {
+    Boolean( preferences, "SpotifyCanvasEnabled", "isSpotifyCanvasEnabled", false )
+}
         //</editor-fold>
+        
         //<editor-fold defaultstate="collapsed" desc="Proxy">
         val IS_PROXY_ENABLED by lazy {
             Boolean( preferences, "IsProxyEnabled", "isProxyEnabled", false )

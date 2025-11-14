@@ -848,5 +848,6 @@
   <string name="spotify_canvas_disconnect">Disconnect</string>
   <string name="spotify_canvas_connect">Connect</string>
   <string name="spotify_canvas_connected">Connected to Spotify account</string>
- 
+  <string name="setting_entry_spotify_login">Login with Spotify</string>
+  <string name="setting_entry_spotify_canvas">Enable Spotify Canvas</string>
 </resources>

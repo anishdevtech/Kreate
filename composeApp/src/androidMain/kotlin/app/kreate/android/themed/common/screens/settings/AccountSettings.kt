@@ -252,7 +252,7 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                 SettingComponents.BooleanEntry(
                     // Preference to enable Spotify services
                     Preferences.SPOTIFY_LOGIN,
-                    R.string.setting_entry_spotify_login // Hardcoded string for simplicity, replace with stringResource(R.string.setting_entry_spotify_login)
+                    stringResource(R.string.setting_entry_spotify_login) // Hardcoded string for simplicity, replace with stringResource(R.string.setting_entry_spotify_login)
                 ) {
                     if ( it ) return@BooleanEntry
 
@@ -272,9 +272,9 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                 Column {
                     val (title, subtitle) = remember( isLoggedIn ) {
                         if ( isLoggedIn )
-                             R.string.spotify_canvas_disconnect to  R.string.spotify_canvas_connected
+                             stringResource(R.string.spotify_canvas_disconnect) to stringResource(R.string.spotify_canvas_connected)
                         else
-                             R.string.spotify_canvas_connect to ""
+                             stringResource(R.string.spotify_canvas_connect) to ""
                     }
                     if( search appearsIn title )
                         SettingComponents.Text(
@@ -301,7 +301,7 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                     if( search appearsIn spotifyCanvasTitle )
                         SettingComponents.BooleanEntry(
                             preference = Preferences.SPOTIFY_CANVAS_ENABLED,
-                            title =  R.string.setting_entry_spotify_canvas
+                            title =  stringResource(R.string.setting_entry_spotify_canvas)
                         )
                 }
 
