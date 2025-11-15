@@ -50,19 +50,7 @@ import it.fast4x.rimusic.extensions.youtubelogin.YouTubeLogin
 import it.fast4x.rimusic.thumbnailShape
 import it.fast4x.rimusic.ui.components.CustomModalBottomSheet
 import it.fast4x.rimusic.ui.styling.Dimensions
-
-//Placeholder Composable for Spotify Login 
-@Composable
-fun SpotifyLogin( onDone: () -> Unit ) {
-    // Placeholder content for the Spotify Login UI (likely a WebView)
-    Column(modifier = Modifier.padding(16.dp)) {
-        SettingComponents.Text(
-            title = "Spotify Login Placeholder",
-            subtitle = "Implement your Spotify OAuth logic here.",
-            onClick = { /* Actual login logic */ onDone() }
-        )
-    }
-}
+import app.kreate.android.extensions.spotify.SpotifyLoginAndGetToken
 
 @ExperimentalMaterial3Api
 @Composable
@@ -316,10 +304,10 @@ fun AccountSettings( paddingValues: PaddingValues ) {
                     },
                     shape = Preferences.THUMBNAIL_BORDER_RADIUS.value.shape
                 ) {
-                    // Call the placeholder or your actual SpotifyLogin composable
-                    SpotifyLogin {
-                        loginSpotify = false
-                    }
+                   // Use the actual SpotifyLoginAndGetToken function
+SpotifyLoginAndGetToken {
+    loginSpotify = false
+}
                 }
             }
             // *** END OF SPOTIFY LOGIN SECTION ***
