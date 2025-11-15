@@ -1,6 +1,7 @@
 package app.kreate.android.extensions.spotify
 
 import android.annotation.SuppressLint
+import android.os.Build
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -39,22 +40,47 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
 
-                WebView.setWebContentsDebuggingEnabled(true)
+                // Enable debugging for easier troubleshooting
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    WebView.setWebContentsDebuggingEnabled(true)
+                }
 
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
                 settings.setSupportZoom(true)
                 settings.builtInZoomControls = true
-                settings.setAcceptThirdPartyCookies(this, true)
-
-                // Clear previous session
-                CookieManager.getInstance().apply {
-                    removeAllCookies(null)
-                    setAcceptCookie(true)
-                    flush()
+                
+                // Third-party cookies - handle API differences
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
+                
+                // For Android 21+ (Lollipop), use the modern method
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                }
+
+                // Clear previous session - compatible with all API levels
+                val cookieManager = CookieManager.getInstance()
+                cookieManager.setAcceptCookie(true)
+                
+                // Remove cookies - handle different API methods
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    cookieManager.removeAllCookies(null)
+                    cookieManager.flush()
+                } else {
+                    // For older Android versions
+                    @Suppress("DEPRECATION")
+                    cookieManager.removeAllCookie()
+                    @Suppress("DEPRECATION") 
+                    cookieManager.removeSessionCookie()
+                }
+
+                // Clear other storage
                 WebStorage.getInstance().deleteAllData()
                 clearCache(true)
+                clearFormData()
+                clearHistory()
 
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView, url: String) {
@@ -65,7 +91,7 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                             // Use coroutine to check cookies multiple times with delays
                             GlobalScope.launch {
                                 var attempts = 0
-                                val maxAttempts = 8 // Increased attempts
+                                val maxAttempts = 10 // Increased for reliability
                                 
                                 while (attempts < maxAttempts) {
                                     delay(1000) // Wait 1 second between attempts
@@ -81,21 +107,33 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                                     
                                     attempts++
                                     // Log progress for debugging
-                                    println("Spotify login: Attempt $attempts/$maxAttempts - No sp_dc found yet")
+                                    android.util.Log.d("SpotifyLogin", "Attempt $attempts/$maxAttempts - No sp_dc found yet")
                                 }
                                 
                                 // If we get here, extraction failed after all attempts
+                                android.util.Log.e("SpotifyLogin", "Failed to extract sp_dc after $maxAttempts attempts")
                                 Toaster.e(R.string.error_failed_to_extract_spotify_token)
                                 onDone()
                             }
                         }
                     }
 
+                    @Suppress("OVERRIDE_DEPRECATION")
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView,
+                        url: String
+                    ): Boolean {
+                        return false
+                    }
+
                     override fun shouldOverrideUrlLoading(
                         view: WebView,
                         request: WebResourceRequest
-                    ): Boolean = false
+                    ): Boolean {
+                        return false
+                    }
 
+                    @Suppress("DEPRECATION")
                     override fun onReceivedError(
                         view: WebView?,
                         errorCode: Int,
@@ -103,6 +141,7 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                         failingUrl: String?
                     ) {
                         super.onReceivedError(view, errorCode, description, failingUrl)
+                        android.util.Log.e("SpotifyLogin", "WebView error: $description")
                         Toaster.e("WebView error: $description")
                     }
                 }
@@ -131,31 +170,43 @@ private fun extractSpDcCookie(): String? {
             ".spotify.com",  // Primary domain where sp_dc is stored
             "https://.spotify.com",
             "https://open.spotify.com",
-            "open.spotify.com"
+            "open.spotify.com",
+            "spotify.com"
         )
         
         for (domain in domainsToCheck) {
-            val cookies = cookieManager.getCookie(domain)
-            if (!cookies.isNullOrBlank()) {
-                println("Found cookies for $domain: $cookies") // Debug log
-                val spDc = extractSpDcFromCookieString(cookies)
-                if (spDc != null) {
-                    println("Successfully extracted sp_dc: ${spDc.take(20)}...") // Debug log
-                    return spDc
+            try {
+                val cookies = cookieManager.getCookie(domain)
+                if (!cookies.isNullOrBlank()) {
+                    android.util.Log.d("SpotifyLogin", "Found cookies for $domain: ${cookies.take(100)}...")
+                    val spDc = extractSpDcFromCookieString(cookies)
+                    if (spDc != null) {
+                        android.util.Log.d("SpotifyLogin", "Successfully extracted sp_dc: ${spDc.take(20)}...")
+                        return spDc
+                    }
                 }
-            } else {
-                println("No cookies found for domain: $domain") // Debug log
+            } catch (e: Exception) {
+                android.util.Log.w("SpotifyLogin", "Error getting cookies for $domain: ${e.message}")
             }
         }
         
-        // Debug: List all available domains with cookies
-        println("Checking all available cookies:")
-        val allCookies = cookieManager.getCookie("spotify.com") ?: "No spotify.com cookies"
-        println("spotify.com cookies: $allCookies")
+        // Try a broader approach - get all cookies and search
+        try {
+            val allCookies = cookieManager.getCookie("https://spotify.com") ?: 
+                           cookieManager.getCookie("http://spotify.com") ?:
+                           cookieManager.getCookie("spotify.com")
+            
+            if (!allCookies.isNullOrBlank()) {
+                android.util.Log.d("SpotifyLogin", "All spotify cookies: ${allCookies.take(200)}...")
+                return extractSpDcFromCookieString(allCookies)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("SpotifyLogin", "Error getting all cookies: ${e.message}")
+        }
         
         null
     } catch (e: Exception) {
-        e.printStackTrace()
+        android.util.Log.e("SpotifyLogin", "Error in extractSpDcCookie: ${e.message}")
         null
     }
 }
@@ -171,7 +222,10 @@ private fun extractSpDcFromCookieString(cookieString: String): String? {
         for (cookie in cookies) {
             val trimmed = cookie.trim()
             if (trimmed.startsWith("sp_dc=")) {
-                return trimmed.substring(6).trim() // Get value after "sp_dc="
+                val value = trimmed.substring(6).trim()
+                if (value.isNotBlank()) {
+                    return value
+                }
             }
         }
         
@@ -184,13 +238,16 @@ private fun extractSpDcFromCookieString(cookieString: String): String? {
         for (pattern in patterns) {
             val match = pattern.find(cookieString)
             if (match != null) {
-                return match.groupValues[1].trim()
+                val value = match.groupValues[1].trim()
+                if (value.isNotBlank()) {
+                    return value
+                }
             }
         }
         
         return null
     } catch (e: Exception) {
-        e.printStackTrace()
+        android.util.Log.e("SpotifyLogin", "Error parsing cookie string: ${e.message}")
         return null
     }
 }
