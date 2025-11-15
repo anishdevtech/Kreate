@@ -45,12 +45,12 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                 settings.domStorageEnabled = true
                 settings.setSupportZoom(true)
                 settings.builtInZoomControls = true
+                settings.setAcceptThirdPartyCookies(this, true)
 
                 // Clear previous session
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     setAcceptCookie(true)
-                    setAcceptThirdPartyCookies(this, true)
                     flush()
                 }
                 WebStorage.getInstance().deleteAllData()
