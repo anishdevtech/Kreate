@@ -50,7 +50,7 @@ fun SpotifyLoginAndGetToken( onDone: () -> Unit ) {
                 CookieManager.getInstance().apply {
                     removeAllCookies(null)
                     setAcceptCookie(true)
-                    setAcceptThirdPartyCookies(this@apply, true)
+                    setAcceptThirdPartyCookies(this, true)
                     flush()
                 }
                 WebStorage.getInstance().deleteAllData()
